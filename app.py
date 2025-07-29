@@ -1,0 +1,146 @@
+import os
+from dotenv import load_dotenv
+from flask import Flask, request, jsonify, render_template
+from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy import PrimaryKeyConstraint
+
+
+app = Flask(__name__)
+
+load_dotenv()
+
+username = os.getenv('MYSQL_USERNAME')
+password = os.getenv('MYSQL_PASSWORD')
+host = os.getenv('MYSQL_HOST')
+database = os.getenv('MYSQL_DATABASE')
+
+# ✅ MySQL connection string (using PyMySQL as the driver)
+app.config['SQLALCHEMY_DATABASE_URI'] = f'mysql+pymysql://{username}:{password}@{host}/{database}'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+db = SQLAlchemy(app)
+
+@app.route('/')
+def index():
+    return render_template('index.html')
+
+# ---------------------
+# Database Models
+# ---------------------
+
+class Publisher(db.Model):
+    __tablename__ = 'publishers'
+    pubID = db.Column(db.Integer, primary_key=True)
+    pname = db.Column(db.String(30))
+    email = db.Column(db.String(50))
+    phone = db.Column(db.String(30))
+
+class Subject(db.Model):
+    __tablename__ = 'subjects'
+    subID = db.Column(db.String(5), primary_key=True)
+    sName = db.Column(db.String(30))
+
+class Author(db.Model):
+    __tablename__ = 'authors'
+    auID = db.Column(db.Integer, primary_key=True)
+    aName = db.Column(db.String(30))
+    email = db.Column(db.String(50))
+    phone = db.Column(db.String(30))
+
+class Title(db.Model):
+    __tablename__ = 'titles'
+    titleID = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(30))
+    pubID = db.Column(db.Integer)
+    subID = db.Column(db.String(5))
+    pubDate = db.Column(db.Date)
+    cover = db.Column(db.String(10))
+    price = db.Column(db.Integer)
+
+class TitleAuthor(db.Model):
+    __tablename__ = 'titleauthors'
+    titleID = db.Column(db.Integer, primary_key=True)
+    auID = db.Column(db.Integer, primary_key=True)
+    importance = db.Column(db.Integer)
+
+    __table_args__ = (
+        PrimaryKeyConstraint('titleID', 'auID'),
+    )
+
+# ---------------------
+# Routes
+# ---------------------
+
+@app.route('/publishers-view')
+def show_publishers():
+    publishers = Publisher.query.all()
+    return render_template('publishers.html', publishers=publishers)
+
+@app.route('/publishers', methods=['GET'])
+def get_publishers():
+    publishers = Publisher.query.all()
+    return jsonify([
+        {
+            'pubID': p.pubID,
+            'pname': p.pname,
+            'email': p.email,
+            'phone': p.phone
+        } for p in publishers
+    ])
+
+@app.route('/publishers', methods=['POST'])
+def add_publisher():
+    data = request.get_json()
+
+    pubID = data.get('pubID')
+    pname = data.get('pname')
+    email = data.get('email')
+    phone = data.get('phone')
+
+    if not pubID or not pname or not email:
+        return jsonify({'error': 'Missing required fields'}), 400
+
+    try:
+        new_pub = Publisher(pubID=pubID, pname=pname, email=email, phone=phone)
+        db.session.add(new_pub)
+        db.session.commit()
+        return jsonify({'message': 'Publisher added'}), 201
+    except Exception as e:
+        print("❌ Error adding publisher:", e)
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/publishers/<int:pubID>', methods=['DELETE'])
+def delete_publisher(pubID):
+    pub = Publisher.query.get_or_404(pubID)
+    db.session.delete(pub)
+    db.session.commit()
+    return jsonify({'message': 'Publisher deleted'})
+
+@app.route('/publishers/<int:pubID>', methods=['PATCH'])
+def update_publisher(pubID):
+    publisher = Publisher.query.get_or_404(pubID)
+    data = request.get_json()
+    field = data.get('field')
+    value = data.get('value')
+
+    if field not in ['pubID', 'pname', 'email', 'phone']:
+        return jsonify({'error': 'Invalid field'}), 400
+
+    setattr(publisher, field, value)
+    db.session.commit()
+    return jsonify({'message': 'Publisher updated'})
+
+
+# ---------------------
+# Debug Info
+# ---------------------
+
+with app.app_context():
+    print("Registered routes:")
+    for rule in app.url_map.iter_rules():
+        print(rule)
+
+
+if __name__ == '__main__':
+    app.run(debug=True)

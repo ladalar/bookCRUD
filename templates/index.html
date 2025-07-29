@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Publisher CRUD</title>
+    <style>
+        table {
+            border-collapse: collapse;
+            width: 80%;
+        }
+        th, td {
+            border: 1px solid #aaa;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #ddd;
+        }
+        input[type="text"], input[type="email"] {
+            width: 90%;
+            padding: 4px;
+            box-sizing: border-box;
+        }
+        button {
+            padding: 6px 12px;
+            margin-top: 4px;
+        }
+        td[contenteditable="true"] {
+            background-color: #fefae0;
+        }
+    </style>
+    <script>
+        async function fetchPublishers() {
+            const res = await fetch('/publishers');
+            const publishers = await res.json();
+            const tbody = document.getElementById('publisherTableBody');
+            tbody.innerHTML = '';
+
+            publishers.forEach(p => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    ${createEditableCell(p.pubID, 'pubID', p.pubID)}
+                    ${createEditableCell(p.pubID, 'pname', p.pname)}
+                    ${createEditableCell(p.pubID, 'email', p.email)}
+                    ${createEditableCell(p.pubID, 'phone', p.phone || '')}
+                    <td><button onclick="deletePublisher(${p.pubID})">Delete</button></td>
+                `;
+                tbody.appendChild(row);
+            });
+
+            const inputRow = document.createElement('tr');
+            inputRow.innerHTML = `
+                <td><input type="text" id="pubID" placeholder="ID"></td>
+                <td><input type="text" id="name" placeholder="Name"></td>
+                <td><input type="email" id="email" placeholder="Email"></td>
+                <td><input type="text" id="phone" placeholder="Phone"></td>
+                <td><button onclick="addPublisher()">Add</button></td>
+            `;
+            tbody.appendChild(inputRow);
+        }
+
+        function createEditableCell(pubID, field, value) {
+            return `
+                <td>
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span class="display-text" style="flex: 1;">${value}</span>
+                        <input class="edit-input" type="text" value="${value}" style="display:none; flex: 1;"
+                            onblur="finishEdit(this, ${pubID}, '${field}')"
+                            onkeydown="handleKey(event, this, ${pubID}, '${field}')">
+                        <button class="edit-btn" onclick="startEdit(this)" 
+                            style="background: none; border: none; cursor: pointer;">✏️</button>
+                    </div>
+                </td>
+            `;
+        }
+
+
+        function startEdit(btn) {
+            const td = btn.closest('td');
+            td.querySelector('.display-text').style.display = 'none';
+            const input = td.querySelector('.edit-input');
+            input.style.display = 'inline';
+            input.focus();
+        }
+
+        function finishEdit(input, pubID, field) {
+            const td = input.closest('td');
+            const newValue = input.value.trim();
+            td.querySelector('.display-text').textContent = newValue;
+            td.querySelector('.display-text').style.display = 'inline';
+            input.style.display = 'none';
+            updateCell(pubID, field, newValue);
+        }
+
+        function handleKey(event, input, pubID, field) {
+            if (event.key === 'Enter') {
+                input.blur();
+            } else if (event.key === 'Escape') {
+                const td = input.closest('td');
+                input.value = td.querySelector('.display-text').textContent;
+                input.style.display = 'none';
+                td.querySelector('.display-text').style.display = 'inline';
+            }
+        }
+
+        async function updateCell(pubID, field, value) {
+            const res = await fetch(`/publishers/${pubID}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ field, value })
+            });
+
+            if (!res.ok) {
+                alert('Failed to update.');
+            }
+        }
+
+        async function addPublisher() {
+            const pubID = document.getElementById('pubID').value.trim();
+            const pname = document.getElementById('name').value.trim();
+            const email = document.getElementById('email').value.trim();
+            const phone = document.getElementById('phone').value.trim();
+
+            if (!pname || !email) {
+                alert('Name and Email are required.');
+                return;
+            }
+
+            const res = await fetch('/publishers', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ pubID, pname, email, phone })
+            });
+
+            if (res.ok) {
+                fetchPublishers();
+            } else {
+                alert('Failed to add publisher.');
+            }
+        }
+
+        async function deletePublisher(pubID) {
+            if (!confirm(`Delete publisher ${pubID}?`)) return;
+
+            const res = await fetch(`/publishers/${pubID}`, {
+                method: 'DELETE'
+            });
+
+            if (res.ok) {
+                fetchPublishers();
+            } else {
+                alert('Failed to delete publisher.');
+            }
+        }
+
+        window.onload = fetchPublishers;
+    </script>
+
+
+</head>
+<body>
+    <h1>Publishers</h1>
+    <table>
+        <thead>
+            <tr>
+                <th>Publisher ID</th>
+                <th>Publisher Name</th>
+                <th>Email</th>
+                <th>Phone</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody id="publisherTableBody"></tbody>
+    </table>
+</body>
+</html>
