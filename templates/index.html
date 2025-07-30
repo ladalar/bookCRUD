@@ -29,6 +29,7 @@
         }
     </style>
     <script>
+        // Publishers
         async function fetchPublishers() {
             const res = await fetch('/publishers');
             const publishers = await res.json();
@@ -151,8 +152,95 @@
                 alert('Failed to delete publisher.');
             }
         }
+        // Subjects
+        async function fetchSubjects() {
+            const res = await fetch('/subjects');
+            const subjects = await res.json();
+            const tbody = document.getElementById('subjectTableBody');
+            tbody.innerHTML = '';
 
-        window.onload = fetchPublishers;
+            subjects.forEach(s => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${s.subID}</td>
+                    <td>${s.sName}</td>
+                    <td><button onclick="deleteSubject(${s.subID})">Delete</button></td>
+                `;
+                tbody.appendChild(row);
+            });
+
+            const inputRow = document.createElement('tr');
+            inputRow.innerHTML = `
+                <td><input type="text" id="subID" placeholder="ID"></td>
+                <td><input type="text" id="sName" placeholder="Name"></td>
+                <td><button onclick="addSubject()">Add</button></td>
+            </tr>
+            `;
+            tbody.appendChild(inputRow);
+            
+        }
+
+        async function deleteSubject(subID) {
+            if (!confirm(`Delete subject ${subID}?`)) return;
+
+            const res = await fetch(`/subjects/${subID}`, {
+                method: 'DELETE'
+            });
+
+            if (res.ok) {
+                fetchSubjects();
+            } else {
+                alert('Failed to delete subject.');
+            }
+        }
+
+        async function addSubject() {
+            const subID = document.getElementById('subID').value.trim();
+            const sName = document.getElementById('sName').value.trim();
+
+            if (!sName) {
+                alert('Subject Name is required.');
+                return;
+            }
+
+            const res = await fetch('/subjects', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ subID, sName })
+            });
+
+            if (res.ok) {
+                fetchSubjects();
+            } else {
+                alert('Failed to add subject.');
+            }
+        }
+
+        async function updateSubject(subID) {
+            const sName = document.getElementById('sName').value.trim();
+
+            if (!sName) {
+                alert('Subject Name is required.');
+                return;
+            }
+
+            const res = await fetch(`/subjects/${subID}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ field: 'sName', value: sName })
+            });
+
+            if (res.ok) {
+                fetchSubjects();
+            } else {
+                alert('Failed to update subject.');
+            }
+        }
+        window.onload = () => {
+            fetchPublishers();
+            fetchSubjects();
+        };
+
     </script>
 
 
@@ -170,6 +258,17 @@
             </tr>
         </thead>
         <tbody id="publisherTableBody"></tbody>
+    </table>
+    <h2>Subjects</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Subject ID</th>
+                <th>Subject Name</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody id="subjectTableBody"></tbody>
     </table>
 </body>
 </html>

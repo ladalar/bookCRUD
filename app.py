@@ -20,11 +20,7 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
 
-@app.route('/')
-def index():
-    return render_template('index.html')
 
-# ---------------------
 # Database Models
 # ---------------------
 
@@ -71,10 +67,12 @@ class TitleAuthor(db.Model):
 # Routes
 # ---------------------
 
-@app.route('/publishers-view')
-def show_publishers():
+@app.route('/')
+def index():
     publishers = Publisher.query.all()
-    return render_template('publishers.html', publishers=publishers)
+    subjects = Subject.query.all()
+    return render_template('index.html', publishers=publishers, subjects=subjects)
+
 
 @app.route('/publishers', methods=['GET'])
 def get_publishers():
@@ -130,6 +128,58 @@ def update_publisher(pubID):
     setattr(publisher, field, value)
     db.session.commit()
     return jsonify({'message': 'Publisher updated'})
+
+
+@app.route('/subjects', methods=['GET'])
+def get_subjects():
+    subjects = Subject.query.all()
+    return jsonify([
+        {
+            'subID': s.subID,
+            'sName': s.sName
+        } for s in subjects
+    ])
+
+@app.route('/subjects', methods=['POST'])
+def add_subject():
+    data = request.get_json()
+
+    subID = data.get('subID')
+    sName = data.get('sName')
+
+    if not subID or not sName:
+        return jsonify({'error': 'Missing required fields'}), 400
+
+    try:
+        new_sub = Subject(subID=subID, sName=sName)
+        db.session.add(new_sub)
+        db.session.commit()
+        return jsonify({'message': 'Subject added'}), 201
+    except Exception as e:
+        print("❌ Error adding subject:", e)
+        return jsonify({'error': str(e)}), 500
+    
+@app.route('/subjects/<string:subID>', methods=['DELETE'])
+def delete_subject(subID):
+    subject = Subject.query.get_or_404(subID)
+    db.session.delete(subject)
+    db.session.commit()
+    return jsonify({'message': 'Subject deleted'})
+
+@app.route('/subjects/<string:subID>', methods=['PATCH'])
+def update_subject(subID):
+    subject = Subject.query.get_or_404(subID)
+    data = request.get_json()
+    field = data.get('field')
+    value = data.get('value')
+
+    if field not in ['subID', 'sName']:
+        return jsonify({'error': 'Invalid field'}), 400
+
+    setattr(subject, field, value)
+    db.session.commit()
+    return jsonify({'message': 'Subject updated'})
+
 
 
 # ---------------------
