@@ -162,8 +162,8 @@
             subjects.forEach(s => {
                 const row = document.createElement('tr');
                 row.innerHTML = `
-                    <td>${s.subID}</td>
-                    <td>${s.sName}</td>
+                    ${createEditableSCell(s.subID, 'subID', s.subID)}
+                    ${createEditableSCell(s.subID, 'sName', s.sName)}
                     <td><button onclick="deleteSubject(${s.subID})">Delete</button></td>
                 `;
                 tbody.appendChild(row);
@@ -179,6 +179,21 @@
             tbody.appendChild(inputRow);
             
         }
+
+        function createEditableSCell(subID, field, value) {
+            return `
+                <td>
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span class="display-text" style="flex: 1;">${value}</span>
+                        <input class="edit-input" type="text" value="${value}" style="display:none; flex: 1;"
+                            onblur="finishEdit(this, ${subID}, '${field}')"
+                            onkeydown="handleKey(event, this, ${subID}, '${field}')">
+                        <button class="edit-btn" onclick="startEdit(this)" 
+                            style="background: none; border: none; cursor: pointer;">✏️</button>
+                    </div>
+                </td>
+            `; }
+
 
         async function deleteSubject(subID) {
             if (!confirm(`Delete subject ${subID}?`)) return;
