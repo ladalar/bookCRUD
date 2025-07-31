@@ -1,49 +1,105 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Publisher CRUD</title>
+    <title>CRUD Tables</title>
     <style>
-        table {
-            border-collapse: collapse;
-            width: 80%;
-        }
-        th, td {
-            border: 1px solid #aaa;
-            padding: 8px;
-            text-align: left;
-        }
-        th {
-            background-color: #ddd;
-        }
-        input[type="text"], input[type="email"] {
-            width: 90%;
-            padding: 4px;
-            box-sizing: border-box;
-        }
-        button {
-            padding: 6px 12px;
-            margin-top: 4px;
-        }
-        td[contenteditable="true"] {
-            background-color: #fefae0;
-        }
+        /* Your existing CSS */
     </style>
+</head>
+<body>
+    <h1>Publishers</h1>
+    <table>
+        <thead>
+            <tr>
+                <th>Publisher ID</th>
+                <th>Publisher Name</th>
+                <th>Email</th>
+                <th>Phone</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody id="publisherTableBody"></tbody>
+    </table>
+
+    <h2>Subjects</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Subject ID</th>
+                <th>Subject Name</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody id="subjectTableBody"></tbody>
+    </table>
+
     <script>
-        // Publishers
+        function createEditableCell(endpoint, ID, field, value) {
+            return `
+                <td>
+                    <div style="display: flex; align-items: center; gap: 6px;">
+                        <span class="display-text">${value}</span>
+                        <input class="edit-input" type="text" value="${value}" style="display: none;"
+                            data-endpoint="${endpoint}" data-id="${ID}" data-field="${field}"
+                            onblur="finishEdit(this)" onkeydown="handleKey(event, this)">
+                        <button class="edit-btn" onclick="startEdit(this)" 
+                            style="background: none; border: none; cursor: pointer;">✏️</button>
+                    </div>
+                </td>
+            `;
+        }
+
+        function startEdit(button) {
+            const td = button.closest('td');
+            td.querySelector('.display-text').style.display = 'none';
+            const input = td.querySelector('.edit-input');
+            input.style.display = 'inline';
+            input.focus();
+        }
+
+        function finishEdit(input) {
+            const td = input.closest('td');
+            const newValue = input.value.trim();
+            td.querySelector('.display-text').textContent = newValue;
+            td.querySelector('.display-text').style.display = 'inline';
+            input.style.display = 'none';
+            updateCell(input.dataset.endpoint, input.dataset.id, input.dataset.field, newValue);
+        }
+
+        function handleKey(event, input) {
+            if (event.key === 'Enter') {
+                input.blur();
+            } else if (event.key === 'Escape') {
+                const td = input.closest('td');
+                input.value = td.querySelector('.display-text').textContent;
+                input.style.display = 'none';
+                td.querySelector('.display-text').style.display = 'inline';
+            }
+        }
+
+        async function updateCell(endpoint, ID, field, value) {
+            const res = await fetch(`${endpoint}/${ID}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ field, value })
+            });
+            if (!res.ok) alert('Failed to update.');
+        }
+
         async function fetchPublishers() {
             const res = await fetch('/publishers');
-            const publishers = await res.json();
+            const data = await res.json();
             const tbody = document.getElementById('publisherTableBody');
             tbody.innerHTML = '';
 
-            publishers.forEach(p => {
+            data.forEach(p => {
                 const row = document.createElement('tr');
                 row.innerHTML = `
-                    ${createEditableCell(p.pubID, 'pubID', p.pubID)}
-                    ${createEditableCell(p.pubID, 'pname', p.pname)}
-                    ${createEditableCell(p.pubID, 'email', p.email)}
-                    ${createEditableCell(p.pubID, 'phone', p.phone || '')}
-                    <td><button onclick="deletePublisher(${p.pubID})">Delete</button></td>
+                    ${createEditableCell('/publishers', p.pubID, 'pubID', p.pubID)}
+                    ${createEditableCell('/publishers', p.pubID, 'pname', p.pname)}
+                    ${createEditableCell('/publishers', p.pubID, 'email', p.email)}
+                    ${createEditableCell('/publishers', p.pubID, 'phone', p.phone || '')}
+                    <td><button onclick="deleteItem('/publishers', ${p.pubID}, fetchPublishers)">Delete</button></td>
                 `;
                 tbody.appendChild(row);
             });
@@ -59,60 +115,36 @@
             tbody.appendChild(inputRow);
         }
 
-        function createEditableCell(pubID, field, value) {
-            return `
-                <td>
-                    <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <span class="display-text" style="flex: 1;">${value}</span>
-                        <input class="edit-input" type="text" value="${value}" style="display:none; flex: 1;"
-                            onblur="finishEdit(this, ${pubID}, '${field}')"
-                            onkeydown="handleKey(event, this, ${pubID}, '${field}')">
-                        <button class="edit-btn" onclick="startEdit(this)" 
-                            style="background: none; border: none; cursor: pointer;">✏️</button>
-                    </div>
-                </td>
-            `;
-        }
+        async function fetchSubjects() {
+            const res = await fetch('/subjects');
+            const data = await res.json();
+            const tbody = document.getElementById('subjectTableBody');
+            tbody.innerHTML = '';
 
-
-        function startEdit(btn) {
-            const td = btn.closest('td');
-            td.querySelector('.display-text').style.display = 'none';
-            const input = td.querySelector('.edit-input');
-            input.style.display = 'inline';
-            input.focus();
-        }
-
-        function finishEdit(input, pubID, field) {
-            const td = input.closest('td');
-            const newValue = input.value.trim();
-            td.querySelector('.display-text').textContent = newValue;
-            td.querySelector('.display-text').style.display = 'inline';
-            input.style.display = 'none';
-            updateCell(pubID, field, newValue);
-        }
-
-        function handleKey(event, input, pubID, field) {
-            if (event.key === 'Enter') {
-                input.blur();
-            } else if (event.key === 'Escape') {
-                const td = input.closest('td');
-                input.value = td.querySelector('.display-text').textContent;
-                input.style.display = 'none';
-                td.querySelector('.display-text').style.display = 'inline';
-            }
-        }
-
-        async function updateCell(pubID, field, value) {
-            const res = await fetch(`/publishers/${pubID}`, {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ field, value })
+            data.forEach(s => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    ${createEditableCell('/subjects', s.subID, 'subID', s.subID)}
+                    ${createEditableCell('/subjects', s.subID, 'sName', s.sName)}
+                    <td><button onclick="deleteItem('/subjects', '${s.subID}', fetchSubjects)">Delete</button></td>
+                `;
+                tbody.appendChild(row);
             });
 
-            if (!res.ok) {
-                alert('Failed to update.');
-            }
+            const inputRow = document.createElement('tr');
+            inputRow.innerHTML = `
+                <td><input type="text" id="subID" placeholder="ID"></td>
+                <td><input type="text" id="sName" placeholder="Name"></td>
+                <td><button onclick="addSubject()">Add</button></td>
+            `;
+            tbody.appendChild(inputRow);
+        }
+
+        async function deleteItem(endpoint, id, refreshFn) {
+            if (!confirm(`Delete item ${id}?`)) return;
+            const res = await fetch(`${endpoint}/${id}`, { method: 'DELETE' });
+            if (res.ok) refreshFn();
+            else alert('Failed to delete item.');
         }
 
         async function addPublisher() {
@@ -132,81 +164,8 @@
                 body: JSON.stringify({ pubID, pname, email, phone })
             });
 
-            if (res.ok) {
-                fetchPublishers();
-            } else {
-                alert('Failed to add publisher.');
-            }
-        }
-
-        async function deletePublisher(pubID) {
-            if (!confirm(`Delete publisher ${pubID}?`)) return;
-
-            const res = await fetch(`/publishers/${pubID}`, {
-                method: 'DELETE'
-            });
-
-            if (res.ok) {
-                fetchPublishers();
-            } else {
-                alert('Failed to delete publisher.');
-            }
-        }
-        // Subjects
-        async function fetchSubjects() {
-            const res = await fetch('/subjects');
-            const subjects = await res.json();
-            const tbody = document.getElementById('subjectTableBody');
-            tbody.innerHTML = '';
-
-            subjects.forEach(s => {
-                const row = document.createElement('tr');
-                row.innerHTML = `
-                    ${createEditableSCell(s.subID, 'subID', s.subID)}
-                    ${createEditableSCell(s.subID, 'sName', s.sName)}
-                    <td><button onclick="deleteSubject(${s.subID})">Delete</button></td>
-                `;
-                tbody.appendChild(row);
-            });
-
-            const inputRow = document.createElement('tr');
-            inputRow.innerHTML = `
-                <td><input type="text" id="subID" placeholder="ID"></td>
-                <td><input type="text" id="sName" placeholder="Name"></td>
-                <td><button onclick="addSubject()">Add</button></td>
-            </tr>
-            `;
-            tbody.appendChild(inputRow);
-            
-        }
-
-        function createEditableSCell(subID, field, value) {
-            return `
-                <td>
-                    <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <span class="display-text" style="flex: 1;">${value}</span>
-                        <input class="edit-input" type="text" value="${value}" style="display:none; flex: 1;"
-                            onblur="finishEdit(this, ${subID}, '${field}')"
-                            onkeydown="handleKey(event, this, ${subID}, '${field}')">
-                        <button class="edit-btn" onclick="startEdit(this)" 
-                            style="background: none; border: none; cursor: pointer;">✏️</button>
-                    </div>
-                </td>
-            `; }
-
-
-        async function deleteSubject(subID) {
-            if (!confirm(`Delete subject ${subID}?`)) return;
-
-            const res = await fetch(`/subjects/${subID}`, {
-                method: 'DELETE'
-            });
-
-            if (res.ok) {
-                fetchSubjects();
-            } else {
-                alert('Failed to delete subject.');
-            }
+            if (res.ok) fetchPublishers();
+            else alert('Failed to add publisher.');
         }
 
         async function addSubject() {
@@ -224,66 +183,14 @@
                 body: JSON.stringify({ subID, sName })
             });
 
-            if (res.ok) {
-                fetchSubjects();
-            } else {
-                alert('Failed to add subject.');
-            }
+            if (res.ok) fetchSubjects();
+            else alert('Failed to add subject.');
         }
 
-        async function updateSubject(subID) {
-            const sName = document.getElementById('sName').value.trim();
-
-            if (!sName) {
-                alert('Subject Name is required.');
-                return;
-            }
-
-            const res = await fetch(`/subjects/${subID}`, {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ field: 'sName', value: sName })
-            });
-
-            if (res.ok) {
-                fetchSubjects();
-            } else {
-                alert('Failed to update subject.');
-            }
-        }
         window.onload = () => {
             fetchPublishers();
             fetchSubjects();
         };
-
     </script>
-
-
-</head>
-<body>
-    <h1>Publishers</h1>
-    <table>
-        <thead>
-            <tr>
-                <th>Publisher ID</th>
-                <th>Publisher Name</th>
-                <th>Email</th>
-                <th>Phone</th>
-                <th>Actions</th>
-            </tr>
-        </thead>
-        <tbody id="publisherTableBody"></tbody>
-    </table>
-    <h2>Subjects</h2>
-    <table>
-        <thead>
-            <tr>
-                <th>Subject ID</th>
-                <th>Subject Name</th>
-                <th>Actions</th>
-            </tr>
-        </thead>
-        <tbody id="subjectTableBody"></tbody>
-    </table>
 </body>
 </html>
