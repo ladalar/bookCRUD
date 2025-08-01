@@ -297,6 +297,57 @@ def update_title(titleID):
     db.session.commit()
     return jsonify({'message': 'Title updated'})
 
+@app.route('/titleauthors', methods=['GET'])
+def get_title_authors():
+    title_authors = TitleAuthor.query.all()
+    return jsonify([
+        {
+            'titleID': ta.titleID,
+            'auID': ta.auID,
+            'importance': ta.importance
+        } for ta in title_authors
+    ])
+
+@app.route('/titleauthors', methods=['POST'])
+def add_title_author():
+    data = request.get_json()
+
+    titleID = data.get('titleID')
+    auID = data.get('auID')
+    importance = data.get('importance')
+
+    if not titleID or not auID:
+        return jsonify({'error': 'Missing required fields'}), 400
+
+    try:
+        new_title_author = TitleAuthor(titleID=titleID, auID=auID, importance=importance)
+        db.session.add(new_title_author)
+        db.session.commit()
+        return jsonify({'message': 'TitleAuthor added'}), 201
+    except Exception as e:
+        print("❌ Error adding title author:", e)
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/titleauthors/<int:titleID>/<int:auID>', methods=['DELETE'])
+def delete_title_author(titleID, auID):
+    title_author = TitleAuthor.query.filter_by(titleID=titleID, auID=auID).first_or_404()
+    db.session.delete(title_author)
+    db.session.commit()
+    return jsonify({'message': 'TitleAuthor deleted'})
+
+@app.route('/titleauthors/<int:titleID>/<int:auID>', methods=['PATCH'])
+def update_title_author(titleID, auID):
+    title_author = TitleAuthor.query.filter_by(titleID=titleID, auID=auID).first_or_404()
+    data = request.get_json()
+    field = data.get('field')
+    value = data.get('value')
+
+    if field not in ['titleID', 'auID', 'importance']:
+        return jsonify({'error': 'Invalid field'}), 400
+    setattr(title_author, field, value)
+    db.session.commit()
+    return jsonify({'message': 'TitleAuthor updated'})
+
 
 # Debug Info
 

@@ -64,6 +64,19 @@
         <tbody id="titleTableBody"></tbody>
     </table>
 
+    <h2>Title Authors</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Title ID</th>
+                <th>Author ID</th>
+                <th>Importance</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody id="titleAuthorTableBody"></tbody>
+    </table>
+
     <script>
         const tableConfigs = {
             publishers: {
@@ -106,6 +119,16 @@
                     { key: 'pubDate', type: 'date', label: 'Publication Date' },
                     { key: 'cover', type: 'text', label: 'Cover' },
                     { key: 'price', type: 'number', label: 'Price' }
+                ]
+            },
+
+            titleauthors: {
+                endpoint: '/titleauthors',
+                tableBodyId: 'titleAuthorTableBody',
+                fields: [
+                    { key: 'titleID', type: 'number', label: 'Title ID' },
+                    { key: 'auID', type: 'number', label: 'Author ID' },
+                    { key: 'importance', type: 'number', label: 'Importance' }
                 ]
             }
 
