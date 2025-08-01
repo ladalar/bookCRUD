@@ -47,7 +47,22 @@
         <tbody id="authorTableBody"></tbody>
     </table>
 
-
+    <h2>Titles</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Title ID</th>
+                <th>Title</th>
+                <th>Publisher ID</th>
+                <th>Subject ID</th>
+                <th>Publication Date</th>
+                <th>Cover</th>
+                <th>Price</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody id="titleTableBody"></tbody>
+    </table>
 
     <script>
         const tableConfigs = {
@@ -78,7 +93,22 @@
                     { key: 'email', type: 'email', label: 'Email' },
                     { key: 'phone', type: 'tel', label: 'Phone' }
                 ]
+            },
+
+            titles: {
+                endpoint: '/titles',
+                tableBodyId: 'titleTableBody',
+                fields: [
+                    { key: 'titleID', type: 'number', label: 'Title ID' },
+                    { key: 'title', type: 'text', label: 'Title' },
+                    { key: 'pubID', type: 'number', label: 'Publisher ID' },
+                    { key: 'subID', type: 'text', label: 'Subject ID' },
+                    { key: 'pubDate', type: 'date', label: 'Publication Date' },
+                    { key: 'cover', type: 'text', label: 'Cover' },
+                    { key: 'price', type: 'number', label: 'Price' }
+                ]
             }
+
         };
         function createEditableCell(endpoint, ID, field, value) {
             return `
@@ -180,7 +210,6 @@
                     itemData[field] = element.value.trim();
                 }
             }
-
 
             const res = await fetch(endpoint, {
                 method: 'POST',

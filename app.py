@@ -234,11 +234,71 @@ def update_author(auID):
     db.session.commit()
     return jsonify({'message': 'Author updated'})
 
+@app.route('/titles', methods=['GET'])
+def get_titles():
+    titles = Title.query.all()
+    return jsonify([
+        {
+            'titleID': t.titleID,
+            'title': t.title,
+            'pubID': t.pubID,
+            'subID': t.subID,
+            'pubDate': t.pubDate.isoformat() if t.pubDate else None,
+            'cover': t.cover,
+            'price': t.price
+        } for t in titles
+    ])
+
+@app.route('/titles', methods=['POST'])
+def add_title():
+    data = request.get_json()
+
+    titleID = data.get('titleID')
+    title = data.get('title')
+    pubID = data.get('pubID')
+    subID = data.get('subID')
+    pubDate = data.get('pubDate')
+    cover = data.get('cover')
+    price = data.get('price')
+
+    if not titleID or not title or not pubID or not subID:
+        return jsonify({'error': 'Missing required fields'}), 400
+
+    try:
+        new_title = Title(
+            titleID=titleID, title=title, pubID=pubID, subID=subID,
+            pubDate=pubDate, cover=cover, price=price
+        )
+        db.session.add(new_title)
+        db.session.commit()
+        return jsonify({'message': 'Title added'}), 201
+    except Exception as e:
+        print("❌ Error adding title:", e)
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/titles/<int:titleID>', methods=['DELETE'])
+def delete_title(titleID):
+    title = Title.query.get_or_404(titleID)
+    db.session.delete(title)
+    db.session.commit()
+    return jsonify({'message': 'Title deleted'})
+
+@app.route('/titles/<int:titleID>', methods=['PATCH'])
+def update_title(titleID):
+    title = Title.query.get_or_404(titleID)
+    data = request.get_json()
+    field = data.get('field')
+    value = data.get('value')
+
+    if field not in ['titleID', 'title', 'pubID', 'subID', 'pubDate', 'cover', 'price']:
+        return jsonify({'error': 'Invalid field'}), 400
+
+    setattr(title, field, value)
+    db.session.commit()
+    return jsonify({'message': 'Title updated'})
 
 
-# ---------------------
 # Debug Info
-# ---------------------
 
 with app.app_context():
     print("Registered routes:")
