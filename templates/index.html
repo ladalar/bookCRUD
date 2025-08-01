@@ -7,7 +7,7 @@
     </style>
 </head>
 <body>
-    <h1>Publishers</h1>
+    <h2>Publishers</h2>
     <table>
         <thead>
             <tr>
@@ -33,7 +33,53 @@
         <tbody id="subjectTableBody"></tbody>
     </table>
 
+    <h2>Authors</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Author ID</th>
+                <th>Author Name</th>
+                <th>Email</th>
+                <th>Phone</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody id="authorTableBody"></tbody>
+    </table>
+
+
+
     <script>
+        const tableConfigs = {
+            publishers: {
+                endpoint: '/publishers',
+                tableBodyId: 'publisherTableBody',
+                fields: [
+                    { key: 'pubID', type: 'number', label: 'Publisher ID' },
+                    { key: 'pname', type: 'text', label: 'Publisher Name' },
+                    { key: 'email', type: 'email', label: 'Email' },
+                    { key: 'phone', type: 'tel', label: 'Phone' }
+                ]
+            },
+            subjects: {
+                endpoint: '/subjects',
+                tableBodyId: 'subjectTableBody',
+                fields: [
+                    { key: 'subID', type: 'text', label: 'Subject ID' },
+                    { key: 'sName', type: 'text', label: 'Subject Name' }
+                ]
+            },
+            authors: {
+                endpoint: '/authors',
+                tableBodyId: 'authorTableBody',
+                fields: [
+                    { key: 'auID', type: 'number', label: 'Author ID' },
+                    { key: 'aName', type: 'text', label: 'Author Name' },
+                    { key: 'email', type: 'email', label: 'Email' },
+                    { key: 'phone', type: 'tel', label: 'Phone' }
+                ]
+            }
+        };
         function createEditableCell(endpoint, ID, field, value) {
             return `
                 <td>
@@ -86,34 +132,34 @@
             if (!res.ok) alert('Failed to update.');
         }
 
-        async function fetchAndRenderTable(endpoint, tableBodyId, fields, addFunctionName) {
+        async function fetchAndRenderTable(endpoint, tableBodyId, fields) {
             const res = await fetch(endpoint);
             const data = await res.json();
             const tbody = document.getElementById(tableBodyId);
             tbody.innerHTML = '';
 
-        data.forEach(item => {
-            const row = document.createElement('tr');
-            row.innerHTML = fields.map(f =>
-                createEditableCell(endpoint, item[fields[0].key], f.key, item[f.key] || '')
-            ).join('');
+            data.forEach(item => {
+                const row = document.createElement('tr');
+                row.innerHTML = fields.map(f =>
+                    createEditableCell(endpoint, item[fields[0].key], f.key, item[f.key] || '')
+                ).join('');
 
-            const actionCell = document.createElement('td');
-            const deleteBtn = document.createElement('button');
-            deleteBtn.textContent = 'Delete';
-            deleteBtn.onclick = () => deleteItem(endpoint, item[fields[0].key], () => fetchAndRenderTable(endpoint, tableBodyId, fields, addFunctionName));
-            actionCell.appendChild(deleteBtn);
+                const actionCell = document.createElement('td');
+                const deleteBtn = document.createElement('button');
+                deleteBtn.textContent = 'Delete';
+                deleteBtn.onclick = () => deleteItem(endpoint, item[fields[0].key], () => fetchAndRenderTable(endpoint, tableBodyId, fields));
+                actionCell.appendChild(deleteBtn);
 
-            row.appendChild(actionCell);
-            tbody.appendChild(row);
+                row.appendChild(actionCell);
+                tbody.appendChild(row);
         });
 
 
             const inputRow = document.createElement('tr');
-            inputRow.innerHTML = fields.map(f =>
-                `<td><input type="${f.type}" id="${f.key}" placeholder="${f.label}"></td>`
-            ).join('') + `<td><button onclick="${addFunctionName}()">Add</button></td>`;
-            tbody.appendChild(inputRow);
+                inputRow.innerHTML = fields.map(f =>
+                    `<td><input type="${f.type}" data-entity="${tableBodyId}" data-key="${f.key}" placeholder="${f.label}" /></td>`
+                ).join('') + `<td><button class="add-btn" data-entity="${tableBodyId}">Add</button></td>`;
+                tbody.appendChild(inputRow);
         }
 
 
@@ -143,57 +189,54 @@
             });
 
             if (res.ok) {
-                fetchFunction(); // Refresh the table
+                fetchFunction(); 
             } else {
                 alert(`Failed to add item to ${endpoint}.`);
             }
         }
 
+        document.addEventListener('click', async function (e) {
+            if (!e.target.classList.contains('add-btn')) return;
+
+            const tableBodyId = e.target.dataset.entity;
+            const config = Object.values(tableConfigs).find(cfg => cfg.tableBodyId === tableBodyId);
+            if (!config) return;
+
+            const { endpoint, fields } = config;
+            const itemData = {};
+
+            fields.forEach(f => {
+                const input = document.querySelector(`input[data-entity="${tableBodyId}"][data-key="${f.key}"]`);
+                if (input) {
+                    itemData[f.key] = input.value.trim();
+                }
+            });
+
+            const missingRequired = fields.some(f => !itemData[f.key] && f.key !== 'phone');
+            if (missingRequired) {
+                alert('Please fill in all required fields.');
+                return;
+            }
+
+            const res = await fetch(endpoint, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(itemData)
+            });
+
+            if (res.ok) {
+                fetchAndRenderTable(endpoint, tableBodyId, fields);
+            } else {
+                alert('Failed to add item.');
+            }
+        });
+
+
         window.onload = () => {
-            fetchAndRenderTable('/publishers', 'publisherTableBody', [
-                { key: 'pubID', type: 'number' },
-                { key: 'pname', type: 'text', label: 'Publisher Name' },
-                { key: 'email', type: 'email', label: 'Email' },
-                { key: 'phone', type: 'tel', label: 'Phone' }
-            ], 'addPublisher');
-
-            fetchAndRenderTable('/subjects', 'subjectTableBody', [
-                { key: 'subID', type: 'text' },
-                { key: 'sName', type: 'text', label: 'Subject Name' }
-            ], 'addSubject');
+            Object.values(tableConfigs).forEach(({ endpoint, tableBodyId, fields }) => {
+                fetchAndRenderTable(endpoint, tableBodyId, fields);
+            });
         };
-
-        function addPublisher() {
-            addItem('/publishers', ['pubID', 'pname', 'email', 'phone'], () => fetchAndRenderTable('/publishers', 'publisherTableBody', [
-                { key: 'pubID', type: 'number' },
-                { key: 'pname', type: 'text', label: 'Publisher Name' },
-                { key: 'email', type: 'email', label: 'Email' },
-                { key: 'phone', type: 'tel', label: 'Phone' }
-            ], 'addPublisher'));
-        }
-
-        function addSubject() {
-            addItem('/subjects', ['subID', 'sName'], () => fetchAndRenderTable('/subjects', 'subjectTableBody', [
-                { key: 'subID', type: 'text' },
-                { key: 'sName', type: 'text', label: 'Subject Name' }
-            ], 'addSubject'));
-        }
-
-        function deletePublisher(id) {
-            deleteItem('/publishers', id, () => fetchAndRenderTable('/publishers', 'publisherTableBody', [
-                { key: 'pubID', type: 'number' },
-                { key: 'pname', type: 'text', label: 'Publisher Name' },
-                { key: 'email', type: 'email', label: 'Email' },
-                { key: 'phone', type: 'tel', label: 'Phone' }
-            ], 'deletePublisher'));
-        }
-        
-        function deleteSubject(id) {
-            deleteItem('/subjects', id, () => fetchAndRenderTable('/subjects', 'subjectTableBody', [
-                { key: 'subID', type: 'text' },
-                { key: 'sName', type: 'text', label: 'Subject Name' }
-            ], 'deleteSubject'));
-        }
 
     </script>
 </body>
