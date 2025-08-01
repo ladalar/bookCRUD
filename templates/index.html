@@ -86,59 +86,36 @@
             if (!res.ok) alert('Failed to update.');
         }
 
-        async function fetchPublishers() {
-            const res = await fetch('/publishers');
+        async function fetchAndRenderTable(endpoint, tableBodyId, fields, addFunctionName) {
+            const res = await fetch(endpoint);
             const data = await res.json();
-            const tbody = document.getElementById('publisherTableBody');
+            const tbody = document.getElementById(tableBodyId);
             tbody.innerHTML = '';
 
-            data.forEach(p => {
-                const row = document.createElement('tr');
-                row.innerHTML = `
-                    ${createEditableCell('/publishers', p.pubID, 'pubID', p.pubID)}
-                    ${createEditableCell('/publishers', p.pubID, 'pname', p.pname)}
-                    ${createEditableCell('/publishers', p.pubID, 'email', p.email)}
-                    ${createEditableCell('/publishers', p.pubID, 'phone', p.phone || '')}
-                    <td><button onclick="deleteItem('/publishers', ${p.pubID}, fetchPublishers)">Delete</button></td>
-                `;
-                tbody.appendChild(row);
-            });
+        data.forEach(item => {
+            const row = document.createElement('tr');
+            row.innerHTML = fields.map(f =>
+                createEditableCell(endpoint, item[fields[0].key], f.key, item[f.key] || '')
+            ).join('');
+
+            const actionCell = document.createElement('td');
+            const deleteBtn = document.createElement('button');
+            deleteBtn.textContent = 'Delete';
+            deleteBtn.onclick = () => deleteItem(endpoint, item[fields[0].key], () => fetchAndRenderTable(endpoint, tableBodyId, fields, addFunctionName));
+            actionCell.appendChild(deleteBtn);
+
+            row.appendChild(actionCell);
+            tbody.appendChild(row);
+        });
+
 
             const inputRow = document.createElement('tr');
-            inputRow.innerHTML = `
-                <td><input type="text" id="pubID" placeholder="ID"></td>
-                <td><input type="text" id="name" placeholder="Name"></td>
-                <td><input type="email" id="email" placeholder="Email"></td>
-                <td><input type="text" id="phone" placeholder="Phone"></td>
-                <td><button onclick="addPublisher()">Add</button></td>
-            `;
+            inputRow.innerHTML = fields.map(f =>
+                `<td><input type="${f.type}" id="${f.key}" placeholder="${f.label}"></td>`
+            ).join('') + `<td><button onclick="${addFunctionName}()">Add</button></td>`;
             tbody.appendChild(inputRow);
         }
 
-        async function fetchSubjects() {
-            const res = await fetch('/subjects');
-            const data = await res.json();
-            const tbody = document.getElementById('subjectTableBody');
-            tbody.innerHTML = '';
-
-            data.forEach(s => {
-                const row = document.createElement('tr');
-                row.innerHTML = `
-                    ${createEditableCell('/subjects', s.subID, 'subID', s.subID)}
-                    ${createEditableCell('/subjects', s.subID, 'sName', s.sName)}
-                    <td><button onclick="deleteItem('/subjects', '${s.subID}', fetchSubjects)">Delete</button></td>
-                `;
-                tbody.appendChild(row);
-            });
-
-            const inputRow = document.createElement('tr');
-            inputRow.innerHTML = `
-                <td><input type="text" id="subID" placeholder="ID"></td>
-                <td><input type="text" id="sName" placeholder="Name"></td>
-                <td><button onclick="addSubject()">Add</button></td>
-            `;
-            tbody.appendChild(inputRow);
-        }
 
         async function deleteItem(endpoint, id, refreshFn) {
             if (!confirm(`Delete item ${id}?`)) return;
@@ -147,50 +124,77 @@
             else alert('Failed to delete item.');
         }
 
-        async function addPublisher() {
-            const pubID = document.getElementById('pubID').value.trim();
-            const pname = document.getElementById('name').value.trim();
-            const email = document.getElementById('email').value.trim();
-            const phone = document.getElementById('phone').value.trim();
+        async function addItem(endpoint, fields, fetchFunction) {
+            const itemData = {};
 
-            if (!pname || !email) {
-                alert('Name and Email are required.');
-                return;
+            // Extract values from input fields
+            for (const field of fields) {
+                const element = document.getElementById(field);
+                if (element) {
+                    itemData[field] = element.value.trim();
+                }
             }
 
-            const res = await fetch('/publishers', {
+
+            const res = await fetch(endpoint, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ pubID, pname, email, phone })
+                body: JSON.stringify(itemData),
             });
 
-            if (res.ok) fetchPublishers();
-            else alert('Failed to add publisher.');
-        }
-
-        async function addSubject() {
-            const subID = document.getElementById('subID').value.trim();
-            const sName = document.getElementById('sName').value.trim();
-
-            if (!sName) {
-                alert('Subject Name is required.');
-                return;
+            if (res.ok) {
+                fetchFunction(); // Refresh the table
+            } else {
+                alert(`Failed to add item to ${endpoint}.`);
             }
-
-            const res = await fetch('/subjects', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ subID, sName })
-            });
-
-            if (res.ok) fetchSubjects();
-            else alert('Failed to add subject.');
         }
 
         window.onload = () => {
-            fetchPublishers();
-            fetchSubjects();
+            fetchAndRenderTable('/publishers', 'publisherTableBody', [
+                { key: 'pubID', type: 'number' },
+                { key: 'pname', type: 'text', label: 'Publisher Name' },
+                { key: 'email', type: 'email', label: 'Email' },
+                { key: 'phone', type: 'tel', label: 'Phone' }
+            ], 'addPublisher');
+
+            fetchAndRenderTable('/subjects', 'subjectTableBody', [
+                { key: 'subID', type: 'text' },
+                { key: 'sName', type: 'text', label: 'Subject Name' }
+            ], 'addSubject');
         };
+
+        function addPublisher() {
+            addItem('/publishers', ['pubID', 'pname', 'email', 'phone'], () => fetchAndRenderTable('/publishers', 'publisherTableBody', [
+                { key: 'pubID', type: 'number' },
+                { key: 'pname', type: 'text', label: 'Publisher Name' },
+                { key: 'email', type: 'email', label: 'Email' },
+                { key: 'phone', type: 'tel', label: 'Phone' }
+            ], 'addPublisher'));
+        }
+
+        function addSubject() {
+            addItem('/subjects', ['subID', 'sName'], () => fetchAndRenderTable('/subjects', 'subjectTableBody', [
+                { key: 'subID', type: 'text' },
+                { key: 'sName', type: 'text', label: 'Subject Name' }
+            ], 'addSubject'));
+        }
+
+        function deletePublisher(id) {
+            deleteItem('/publishers', id, () => fetchAndRenderTable('/publishers', 'publisherTableBody', [
+                { key: 'pubID', type: 'number' },
+                { key: 'pname', type: 'text', label: 'Publisher Name' },
+                { key: 'email', type: 'email', label: 'Email' },
+                { key: 'phone', type: 'tel', label: 'Phone' }
+            ], 'deletePublisher'));
+        }
+        
+        function deleteSubject(id) {
+            deleteItem('/subjects', id, () => fetchAndRenderTable('/subjects', 'subjectTableBody', [
+                { key: 'subID', type: 'text' },
+                { key: 'sName', type: 'text', label: 'Subject Name' }
+            ], 'deleteSubject'));
+        }
+
     </script>
 </body>
 </html>

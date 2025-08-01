@@ -180,6 +180,59 @@ def update_subject(subID):
     db.session.commit()
     return jsonify({'message': 'Subject updated'})
 
+@app.route('/authors', methods=['GET'])
+def get_authors():
+    authors = Author.query.all()
+    return jsonify([
+        {
+            'auID': a.auID,
+            'aName': a.aName,
+            'email': a.email,
+            'phone': a.phone
+        } for a in authors
+    ])
+
+@app.route('/authors', methods=['POST'])
+def add_author():
+    data = request.get_json()
+
+    auID = data.get('auID')
+    aName = data.get('aName')
+    email = data.get('email')
+    phone = data.get('phone')
+
+    if not auID or not aName or not email:
+        return jsonify({'error': 'Missing required fields'}), 400
+
+    try:
+        new_author = Author(auID=auID, aName=aName, email=email, phone=phone)
+        db.session.add(new_author)
+        db.session.commit()
+        return jsonify({'message': 'Author added'}), 201
+    except Exception as e:
+        print("❌ Error adding author:", e)
+        return jsonify({'error': str(e)}), 500
+    
+@app.route('/authors/<int:auID>', methods=['DELETE'])
+def delete_author(auID):
+    author = Author.query.get_or_404(auID)
+    db.session.delete(author)
+    db.session.commit()
+    return jsonify({'message': 'Author deleted'})
+
+@app.route('/authors/<int:auID>', methods=['PATCH'])
+def update_author(auID):
+    author = Author.query.get_or_404(auID)
+    data = request.get_json()
+    field = data.get('field')
+    value = data.get('value')
+
+    if field not in ['auID', 'aName', 'email', 'phone']:
+        return jsonify({'error': 'Invalid field'}), 400
+
+    setattr(author, field, value)
+    db.session.commit()
+    return jsonify({'message': 'Author updated'})
 
 
 
