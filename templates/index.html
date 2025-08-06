@@ -4,11 +4,11 @@
     <title>CRUD Tables</title>
     <style>
         .circle-btn {
-            width: 32px;
-            height: 32px;
+            width: 28px;
+            height: 28px;
             border-radius: 50%;
-            background-color: #f0f8ff;
-            border: 1px solid #ccc;
+            background-color: #e9f5ff;
+            border: none;
             color: #28a745;
             font-size: 18px;
             font-weight: bold;
@@ -27,6 +27,109 @@
         .circle-btn:active {
             transform: scale(0.95);
         }
+
+        .delete-btn {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background-color: #e9f5ff;
+            border: none;
+            color: #d30404;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.2s, transform 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .delete-btn:hover {
+            background-color: #edd4d4;
+            transform: scale(1.1);
+        }
+
+        .delete-btn:active {
+            transform: scale(0.95);
+        }
+        table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            margin-bottom: 30px;
+            font-family: 'Segoe UI', sans-serif;
+            background-color: #f9fcff;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+        }
+
+        thead {
+            background-color: #e9f5ff;
+        }
+
+        thead th {
+            padding: 12px 10px;
+            font-weight: 600;
+            color: #333;
+            text-align: left;
+            border-bottom: 1px solid #d6eaf8;
+        }
+
+        tbody td {
+            padding: 10px;
+            border-bottom: 1px solid #eef3f9;
+        }
+
+        tbody tr:hover {
+            background-color: #f0f8ff;
+        }
+
+        input[type="text"],
+        input[type="email"],
+        input[type="number"],
+        input[type="tel"],
+        input[type="date"] {
+            width: 100%;
+            padding: 6px 8px;
+            border: 1px solid #ccddee;
+            border-radius: 6px;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+
+        h2 {
+            font-family: 'Segoe UI', sans-serif;
+            color: #22577a;
+            margin-top: 40px;
+        }
+
+        .edit-btn {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background-color: #f0f8ff;
+            border: none;
+            color: #22577a;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.2s, transform 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-left: auto;
+        }
+
+        .edit-btn:hover {
+            background-color: #bfd3e8;
+            transform: scale(1.1);
+        }
+
+        .edit-btn:active {
+            transform: scale(0.95);
+        }
+
 
     </style>
 </head>
@@ -161,13 +264,13 @@
         function createEditableCell(endpoint, ID, field, value) {
             return `
                 <td>
-                    <div style="display: flex; align-items: center; gap: 6px;">
+                    <div style="display: flex; align-items: center; justify-content: space-between; gap: 6px;">
                         <span class="display-text">${value}</span>
                         <input class="edit-input" type="text" value="${value}" style="display: none;"
                             data-endpoint="${endpoint}" data-id="${encodeURIComponent(JSON.stringify(ID))}" data-field="${field}"
                             onblur="finishEdit(this)" onkeydown="handleKey(event, this)">
                         <button class="edit-btn" onclick="startEdit(this)" 
-                            style="background: none; border: none; cursor: pointer;">✏️</button>
+                            style="background: none; border: none; cursor: pointer;">🖉</button>
                     </div>
                 </td>
             `;
@@ -257,7 +360,9 @@
 
                 const actionCell = document.createElement('td');
                 const deleteBtn = document.createElement('button');
-                deleteBtn.textContent = 'Delete';
+                deleteBtn.innerHTML = '-';
+                deleteBtn.classList.add('delete-btn');
+
                 deleteBtn.onclick = () =>
                     deleteItem(endpoint, keys, () => fetchAndRenderTable(endpoint, tableBodyId, fields));
                 actionCell.appendChild(deleteBtn);
@@ -276,7 +381,7 @@
             // Add a cell for the add button
             const addCell = document.createElement('td');
             const addBtn = document.createElement('button');
-            addBtn.innerHTML = '➕';
+            addBtn.innerHTML = '+';
             addBtn.classList.add('add-btn', 'circle-btn');
             addBtn.dataset.entity = tableBodyId;
             addCell.appendChild(addBtn);
