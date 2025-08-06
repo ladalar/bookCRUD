@@ -83,7 +83,7 @@
                 endpoint: '/publishers',
                 tableBodyId: 'publisherTableBody',
                 fields: [
-                    { key: 'pubID', type: 'number', label: 'Publisher ID' },
+                    { key: 'pubID', type: 'number', label: 'Publisher ID', isKey: true},
                     { key: 'pname', type: 'text', label: 'Publisher Name' },
                     { key: 'email', type: 'email', label: 'Email' },
                     { key: 'phone', type: 'tel', label: 'Phone' }
@@ -93,7 +93,7 @@
                 endpoint: '/subjects',
                 tableBodyId: 'subjectTableBody',
                 fields: [
-                    { key: 'subID', type: 'text', label: 'Subject ID' },
+                    { key: 'subID', type: 'text', label: 'Subject ID', isKey: true},
                     { key: 'sName', type: 'text', label: 'Subject Name' }
                 ]
             },
@@ -101,7 +101,7 @@
                 endpoint: '/authors',
                 tableBodyId: 'authorTableBody',
                 fields: [
-                    { key: 'auID', type: 'number', label: 'Author ID' },
+                    { key: 'auID', type: 'number', label: 'Author ID', isKey: true},
                     { key: 'aName', type: 'text', label: 'Author Name' },
                     { key: 'email', type: 'email', label: 'Email' },
                     { key: 'phone', type: 'tel', label: 'Phone' }
@@ -112,7 +112,7 @@
                 endpoint: '/titles',
                 tableBodyId: 'titleTableBody',
                 fields: [
-                    { key: 'titleID', type: 'number', label: 'Title ID' },
+                    { key: 'titleID', type: 'number', label: 'Title ID', isKey: true},
                     { key: 'title', type: 'text', label: 'Title' },
                     { key: 'pubID', type: 'number', label: 'Publisher ID' },
                     { key: 'subID', type: 'text', label: 'Subject ID' },
@@ -126,10 +126,11 @@
                 endpoint: '/titleauthors',
                 tableBodyId: 'titleAuthorTableBody',
                 fields: [
-                    { key: 'titleID', type: 'number', label: 'Title ID' },
-                    { key: 'auID', type: 'number', label: 'Author ID' },
+                    { key: 'titleID', type: 'number', label: 'Title ID', isKey: true },
+                    { key: 'auID', type: 'number', label: 'Author ID', isKey: true },
                     { key: 'importance', type: 'number', label: 'Importance' }
-                ]
+                ],  
+                compositekey: ['titleID', 'auID']
             }
 
         };
@@ -139,7 +140,7 @@
                     <div style="display: flex; align-items: center; gap: 6px;">
                         <span class="display-text">${value}</span>
                         <input class="edit-input" type="text" value="${value}" style="display: none;"
-                            data-endpoint="${endpoint}" data-id="${ID}" data-field="${field}"
+                            data-endpoint="${endpoint}" data-id="${encodeURIComponent(JSON.stringify(ID))}" data-field="${field}"
                             onblur="finishEdit(this)" onkeydown="handleKey(event, this)">
                         <button class="edit-btn" onclick="startEdit(this)" 
                             style="background: none; border: none; cursor: pointer;">✏️</button>
@@ -162,8 +163,18 @@
             td.querySelector('.display-text').textContent = newValue;
             td.querySelector('.display-text').style.display = 'inline';
             input.style.display = 'none';
-            updateCell(input.dataset.endpoint, input.dataset.id, input.dataset.field, newValue);
+
+            // Decode and parse the composite ID (or fallback to single ID)
+            let id;
+            try {
+                id = JSON.parse(decodeURIComponent(input.dataset.id));
+            } catch (e) {
+                id = input.dataset.id; // fallback for single keys
+            }
+
+            updateCell(input.dataset.endpoint, id, input.dataset.field, newValue);
         }
+
 
         function handleKey(event, input) {
             if (event.key === 'Enter') {
@@ -176,14 +187,27 @@
             }
         }
 
-        async function updateCell(endpoint, ID, field, value) {
-            const res = await fetch(`${endpoint}/${ID}`, {
+        async function updateCell(endpoint, keys, field, value) {
+            let url = endpoint;
+
+            if (typeof keys === 'object') {
+                const keyValues = Object.values(keys);
+                url += `/${keyValues.join('/')}`;
+            } else {
+                url += `/${keys}`;
+            }
+
+            const res = await fetch(url, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ field, value })
+                body: JSON.stringify({ field, value }),
             });
-            if (!res.ok) alert('Failed to update.');
+
+            if (!res.ok) {
+                alert('Failed to update.');
+            }
         }
+
 
         async function fetchAndRenderTable(endpoint, tableBodyId, fields) {
             const res = await fetch(endpoint);
@@ -193,35 +217,69 @@
 
             data.forEach(item => {
                 const row = document.createElement('tr');
+
+                const keys = {};
+                fields.forEach(f => {
+                    if (f.isKey) keys[f.key] = item[f.key];
+                });
+
                 row.innerHTML = fields.map(f =>
-                    createEditableCell(endpoint, item[fields[0].key], f.key, item[f.key] || '')
+                    createEditableCell(endpoint, keys, f.key, item[f.key] || '')
                 ).join('');
 
                 const actionCell = document.createElement('td');
                 const deleteBtn = document.createElement('button');
                 deleteBtn.textContent = 'Delete';
-                deleteBtn.onclick = () => deleteItem(endpoint, item[fields[0].key], () => fetchAndRenderTable(endpoint, tableBodyId, fields));
+                deleteBtn.onclick = () =>
+                    deleteItem(endpoint, keys, () => fetchAndRenderTable(endpoint, tableBodyId, fields));
                 actionCell.appendChild(deleteBtn);
 
                 row.appendChild(actionCell);
                 tbody.appendChild(row);
-        });
+            });
 
 
-            const inputRow = document.createElement('tr');
-                inputRow.innerHTML = fields.map(f =>
-                    `<td><input type="${f.type}" data-entity="${tableBodyId}" data-key="${f.key}" placeholder="${f.label}" /></td>`
-                ).join('') + `<td><button class="add-btn" data-entity="${tableBodyId}">Add</button></td>`;
-                tbody.appendChild(inputRow);
+            const newRow = document.createElement('tr');
+            newRow.innerHTML = fields.map(f => {
+                // Use input fields, empty values, data attributes for add
+                return `<td><input type="${f.type}" id="${tableBodyId}-${f.key}" data-entity="${tableBodyId}" data-key="${f.key}" /></td>`;
+            }).join('');
+
+            // Add a cell for the add button
+            const addCell = document.createElement('td');
+            const addBtn = document.createElement('button');
+            addBtn.textContent = 'Add';
+            addBtn.classList.add('add-btn');
+            addBtn.dataset.entity = tableBodyId;
+            addCell.appendChild(addBtn);
+
+            newRow.appendChild(addCell);
+            tbody.appendChild(newRow);
         }
 
 
-        async function deleteItem(endpoint, id, refreshFn) {
-            if (!confirm(`Delete item ${id}?`)) return;
-            const res = await fetch(`${endpoint}/${id}`, { method: 'DELETE' });
+
+       async function deleteItem(endpoint, keys, refreshFn) {
+            let url;
+
+            if (typeof keys === 'object') {
+                // for single keys in object, extract the value and use path param:
+                const keyValues = Object.values(keys);
+                if (keyValues.length === 1) {
+                    url = `${endpoint}/${keyValues[0]}`;
+                } else {
+                    // handle composite keys (more than one) with slash-separated params
+                    url = `${endpoint}/${keyValues.join('/')}`;
+                }
+            } else {
+                url = `${endpoint}/${keys}`;
+            }
+            const res = await fetch(url, { method: 'DELETE' });
             if (res.ok) refreshFn();
             else alert('Failed to delete item.');
         }
+
+
 
         async function addItem(endpoint, fields, fetchFunction) {
             const itemData = {};
