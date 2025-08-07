@@ -130,81 +130,112 @@
             transform: scale(0.95);
         }
 
+        th .sort-icon {
+            font-size: 0.8em;
+            margin-left: 4px;
+            opacity: 0.4;
+        }
+
+        th.sorted-asc .sort-icon::after {
+            content: " ▲";
+            opacity: 1;
+        }
+
+        th.sorted-desc .sort-icon::after {
+            content: " ▼";
+            opacity: 1;
+        }
+
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+        }
+
+        .navbar {
+            background-color: #2c3e50;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+        }
+
+        .navbar a {
+            color: #ecf0f1;
+            padding: 14px 20px;
+            text-decoration: none;
+            display: block;
+        }
+
+        .navbar a:hover {
+            background-color: #34495e;
+        }
+
+        .navbar .brand {
+            font-size: 20px;
+            font-weight: bold;
+        }
+
+        .navbar .nav-links {
+            margin-left: auto;
+            display: flex;
+        }
+
 
     </style>
 </head>
+
 <body>
+    <div class="navbar">
+        <div class="brand">Tables</div>
+        <div class="nav-links">
+            <a href="index">Tables</a>
+            <a href="dash">Dashboard</a>
+        </div>
+    </div>
+
     <h2>Publishers</h2>
     <table>
-        <thead>
-            <tr>
-                <th>Publisher ID</th>
-                <th>Publisher Name</th>
-                <th>Email</th>
-                <th>Phone</th>
-                <th>Actions</th>
-            </tr>
+        <thead data-table="publisherTableBody">
+            <tr></tr>
         </thead>
         <tbody id="publisherTableBody"></tbody>
     </table>
 
     <h2>Subjects</h2>
     <table>
-        <thead>
-            <tr>
-                <th>Subject ID</th>
-                <th>Subject Name</th>
-                <th>Actions</th>
-            </tr>
+        <thead data-table="subjectTableBody">
+            <tr></tr>
         </thead>
         <tbody id="subjectTableBody"></tbody>
     </table>
 
     <h2>Authors</h2>
     <table>
-        <thead>
-            <tr>
-                <th>Author ID</th>
-                <th>Author Name</th>
-                <th>Email</th>
-                <th>Phone</th>
-                <th>Actions</th>
-            </tr>
+        <thead data-table="authorTableBody">
+            <tr></tr>
         </thead>
         <tbody id="authorTableBody"></tbody>
     </table>
 
     <h2>Titles</h2>
     <table>
-        <thead>
-            <tr>
-                <th>Title ID</th>
-                <th>Title</th>
-                <th>Publisher ID</th>
-                <th>Subject ID</th>
-                <th>Publication Date</th>
-                <th>Cover</th>
-                <th>Price</th>
-                <th>Actions</th>
-            </tr>
+        <thead data-table="titleTableBody">
+            <tr></tr>
         </thead>
         <tbody id="titleTableBody"></tbody>
     </table>
 
     <h2>Title Authors</h2>
     <table>
-        <thead>
-            <tr>
-                <th>Title ID</th>
-                <th>Author ID</th>
-                <th>Importance</th>
-                <th>Actions</th>
-            </tr>
+        <thead data-table="titleAuthorTableBody">
+            <tr></tr>
         </thead>
         <tbody id="titleAuthorTableBody"></tbody>
     </table>
 
+</body>
     <script>
+        const sortStates = {}; 
         const tableConfigs = {
             publishers: {
                 endpoint: '/publishers',
@@ -263,7 +294,7 @@
         };
         function createEditableCell(endpoint, ID, field, value) {
             return `
-                <td>
+                <td data-field="${field}">
                     <div style="display: flex; align-items: center; justify-content: space-between; gap: 6px;">
                         <span class="display-text">${value}</span>
                         <input class="edit-input" type="text" value="${value}" style="display: none;"
@@ -341,56 +372,94 @@
 
 
         async function fetchAndRenderTable(endpoint, tableBodyId, fields) {
+        let data = [];
+
+        try {
             const res = await fetch(endpoint);
-            const data = await res.json();
-            const tbody = document.getElementById(tableBodyId);
-            tbody.innerHTML = '';
-
-            data.forEach(item => {
-                const row = document.createElement('tr');
-
-                const keys = {};
-                fields.forEach(f => {
-                    if (f.isKey) keys[f.key] = item[f.key];
-                });
-
-                row.innerHTML = fields.map(f =>
-                    createEditableCell(endpoint, keys, f.key, item[f.key] || '')
-                ).join('');
-
-                const actionCell = document.createElement('td');
-                const deleteBtn = document.createElement('button');
-                deleteBtn.innerHTML = '-';
-                deleteBtn.classList.add('delete-btn');
-
-                deleteBtn.onclick = () =>
-                    deleteItem(endpoint, keys, () => fetchAndRenderTable(endpoint, tableBodyId, fields));
-                actionCell.appendChild(deleteBtn);
-
-                row.appendChild(actionCell);
-                tbody.appendChild(row);
-            });
-
-
-            const newRow = document.createElement('tr');
-            newRow.innerHTML = fields.map(f => {
-                // Use input fields, empty values, data attributes for add
-                return `<td><input type="${f.type}" id="${tableBodyId}-${f.key}" data-entity="${tableBodyId}" data-key="${f.key}" /></td>`;
-            }).join('');
-
-            // Add a cell for the add button
-            const addCell = document.createElement('td');
-            const addBtn = document.createElement('button');
-            addBtn.innerHTML = '+';
-            addBtn.classList.add('add-btn', 'circle-btn');
-            addBtn.dataset.entity = tableBodyId;
-            addCell.appendChild(addBtn);
-
-            newRow.appendChild(addCell);
-            tbody.appendChild(newRow);
+            if (!res.ok) {
+                console.warn(`Fetch failed for ${endpoint}, using mock data.`);
+            } else {
+                data = await res.json();
+            }
+        } catch (e) {
+            console.warn(`Fetch error for ${endpoint}, using mock data.`, e);
         }
 
+        // If no data fetched, provide mock data for testing filtering:
+        if (!data.length) {
+            if (tableBodyId === 'publisherTableBody') {
+                data = [
+                    { pubID: 1, pname: "Willey Publishing", email: "contact@willey.com", phone: "123-456-7890" },
+                    { pubID: 2, pname: "Smith & Co", email: "info@smithco.com", phone: "987-654-3210" },
+                    { pubID: 3, pname: "BooksRUs", email: "hello@booksrus.com", phone: "555-123-4567" }
+                ];
+            } else if (tableBodyId === 'subjectTableBody') {
+                data = [
+                    { subID: "S01", sName: "Mathematics" },
+                    { subID: "S02", sName: "Literature" }
+                ];
+            } else if (tableBodyId === 'authorTableBody') {
+                data = [
+                    { auID: 1, aName: "Alice Johnson", email: "alice@example.com", phone: "111-222-3333" },
+                    { auID: 2, aName: "Bob Smith", email: "bob@example.com", phone: "444-555-6666" }
+                ];
+            } else if (tableBodyId === 'titleTableBody') {
+                data = [
+                    { titleID: 1, title: "Intro to Programming", pubID: 1, subID: "S01", pubDate: "2020-01-01", cover: "Soft", price: 29.99 },
+                    { titleID: 2, title: "World History", pubID: 2, subID: "S02", pubDate: "2019-06-15", cover: "Hard", price: 39.99 }
+                ];
+            } else if (tableBodyId === 'titleAuthorTableBody') {
+                data = [
+                    { titleID: 1, auID: 1, importance: 1 },
+                    { titleID: 2, auID: 2, importance: 2 }
+                ];
+            }
+        }
 
+        const tbody = document.getElementById(tableBodyId);
+        tbody.innerHTML = '';
+
+        data.forEach(item => {
+            const row = document.createElement('tr');
+
+            const keys = {};
+            fields.forEach(f => {
+                if (f.isKey) keys[f.key] = item[f.key];
+            });
+
+            row.innerHTML = fields.map(f =>
+                createEditableCell(endpoint, keys, f.key, item[f.key] || '')
+            ).join('');
+
+            const actionCell = document.createElement('td');
+            const deleteBtn = document.createElement('button');
+            deleteBtn.innerHTML = '-';
+            deleteBtn.classList.add('delete-btn');
+
+            deleteBtn.onclick = () =>
+                deleteItem(endpoint, keys, () => fetchAndRenderTable(endpoint, tableBodyId, fields));
+            actionCell.appendChild(deleteBtn);
+
+            row.appendChild(actionCell);
+            tbody.appendChild(row);
+        });
+
+        // Also append the "new item" input row as before
+        const newRow = document.createElement('tr');
+        newRow.innerHTML = fields.map(f => {
+            return `<td><input type="${f.type}" id="${tableBodyId}-${f.key}" data-entity="${tableBodyId}" data-key="${f.key}" /></td>`;
+        }).join('');
+
+        const addCell = document.createElement('td');
+        const addBtn = document.createElement('button');
+        addBtn.innerHTML = '+';
+        addBtn.classList.add('add-btn', 'circle-btn');
+        addBtn.dataset.entity = tableBodyId;
+        addCell.appendChild(addBtn);
+
+        newRow.appendChild(addCell);
+        tbody.appendChild(newRow);
+    }
 
        async function deleteItem(endpoint, keys, refreshFn) {
             if (!confirm("Are you sure you want to delete this item?")) return;
@@ -412,7 +481,6 @@
             if (res.ok) refreshFn();
             else alert('Failed to delete item.');
         }
-
 
 
         async function addItem(endpoint, fields, fetchFunction) {
@@ -475,12 +543,130 @@
             }
         });
 
+        function filterTable(tableBodyId, searchValue) {
+            const tbody = document.getElementById(tableBodyId);
+            const rows = tbody.querySelectorAll('tr');
 
-        window.onload = () => {
+            const lowerSearch = searchValue.toLowerCase();
+
+            // The last row is always the input row, so we don't filter it.
+            for (let i = 0; i < rows.length - 1; i++) {
+                const row = rows[i];
+                const cells = Array.from(row.querySelectorAll('td'));
+                const text = cells.map(cell => cell.textContent || '').join(' ').toLowerCase();
+                const matched = text.includes(lowerSearch);
+
+                row.style.display = matched ? '' : 'none';
+            }
+        }
+
+
+        function createSearchInputs() {
+            console.log('createSearchInputs running');
+            Object.values(tableConfigs).forEach(({ tableBodyId }) => {
+                const tbody = document.getElementById(tableBodyId);
+                const table = tbody.closest('table');
+
+                if (!table.parentNode.querySelector('.search-container[data-table="' + tableBodyId + '"]')) {
+                    const div = document.createElement('div');
+                    div.className = 'search-container';
+                    div.setAttribute('data-table', tableBodyId);
+
+                    const input = document.createElement('input');
+                    input.type = 'text';
+                    input.placeholder = `Search...`;
+
+                    input.addEventListener('input', () => {
+                        filterTable(tableBodyId, input.value);
+                    });
+
+                    div.appendChild(input);
+                    table.parentNode.insertBefore(div, table);
+                }
+            });
+        }
+
+        function sortTableByColumn(tableBodyId, fields, columnKey) {
+            const tbody = document.getElementById(tableBodyId);
+            const rows = Array.from(tbody.querySelectorAll('tr')).slice(0, -1); // exclude input row
+
+            const field = fields.find(f => f.key === columnKey);
+            if (!field) return;
+
+            const type = field.type;
+            const sortKey = `${tableBodyId}-${columnKey}`;
+            sortStates[sortKey] = !sortStates[sortKey]; // toggle sort direction
+            const ascending = sortStates[sortKey];
+
+            rows.sort((a, b) => {
+                const aText = a.querySelector(`[data-field="${columnKey}"] .display-text`)?.textContent.trim() || '';
+                const bText = b.querySelector(`[data-field="${columnKey}"] .display-text`)?.textContent.trim() || '';
+                let aVal = aText, bVal = bText;
+
+                if (type === 'number') {
+                    aVal = parseFloat(aVal);
+                    bVal = parseFloat(bVal);
+                } else if (type === 'date') {
+                    aVal = new Date(aVal);
+                    bVal = new Date(bVal);
+                } else {
+                    aVal = aVal.toLowerCase();
+                    bVal = bVal.toLowerCase();
+                }
+
+                if (aVal < bVal) return ascending ? -1 : 1;
+                if (aVal > bVal) return ascending ? 1 : -1;
+                return 0;
+            });
+
+            rows.forEach(row => tbody.insertBefore(row, tbody.lastChild));
+
+            // 🔁 Update sort icons
+            const headerRow = document.querySelector(`thead[data-table="${tableBodyId}"] tr`);
+            headerRow.querySelectorAll('th').forEach(th => {
+                th.classList.remove('sorted-asc', 'sorted-desc');
+                if (th.dataset.key === columnKey) {
+                    th.classList.add(ascending ? 'sorted-asc' : 'sorted-desc');
+                }
+            });
+        }
+
+        function addSortingHeaders() {
+            Object.values(tableConfigs).forEach(({ tableBodyId, fields }) => {
+                const theadRow = document.querySelector(`thead[data-table="${tableBodyId}"] tr`);
+                if (!theadRow) return;
+
+                theadRow.innerHTML = '';
+
+                fields.forEach(f => {
+                    const th = document.createElement('th');
+                    th.dataset.key = f.key;
+                    th.innerHTML = `<span class="sortable-header">${f.label} <span class="sort-icon">⇅</span></span>`;
+                    th.style.cursor = 'pointer';
+                    th.addEventListener('click', () => sortTableByColumn(tableBodyId, fields, f.key));
+                    theadRow.appendChild(th);
+                });
+
+                const actionTh = document.createElement('th');
+                actionTh.textContent = 'Actions';
+                theadRow.appendChild(actionTh);
+            });
+        }
+
+
+
+
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('DOM fully loaded and parsed');
             Object.values(tableConfigs).forEach(({ endpoint, tableBodyId, fields }) => {
                 fetchAndRenderTable(endpoint, tableBodyId, fields);
             });
-        };
+            createSearchInputs();
+            addSortingHeaders(); 
+        });
+
+
+
 
     </script>
 </body>

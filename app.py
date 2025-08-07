@@ -3,6 +3,8 @@ from dotenv import load_dotenv
 from flask import Flask, request, jsonify, render_template
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import PrimaryKeyConstraint
+from sqlalchemy import func
+
 
 
 app = Flask(__name__)
@@ -67,7 +69,7 @@ class TitleAuthor(db.Model):
 # Routes
 # ---------------------
 
-@app.route('/')
+@app.route('/index')
 def index():
     publishers = Publisher.query.all()
     subjects = Subject.query.all()
@@ -347,6 +349,38 @@ def update_title_author(titleID, auID):
     setattr(title_author, field, value)
     db.session.commit()
     return jsonify({'message': 'TitleAuthor updated'})
+
+@app.route('/dash')
+def dash():
+    return render_template('dash.html')
+
+@app.route('/dash-spop')
+def dash_spop():
+    results = (
+        db.session.query(Subject.sName, func.count(Title.titleID).label('popularity'))
+        .outerjoin(Title, Subject.subID == Title.subID)
+        .group_by(Subject.sName)
+        .order_by(func.count(Title.titleID).desc())
+        .all()
+    )
+
+    data = [{'subject': r[0], 'popularity': r[1]} for r in results]
+    return jsonify(data)
+
+@app.route('/dash-apop')
+def dash_apop():
+    results = (
+        db.session.query(Author.aName, func.count(TitleAuthor.titleID).label('popularity'))
+        .outerjoin(TitleAuthor, Author.auID == TitleAuthor.auID)
+        .group_by(Author.aName)
+        .order_by(func.count(TitleAuthor.titleID).desc())
+        .all()
+    )
+
+    data = [{'author': r[0], 'popularity': r[1]} for r in results]
+    return jsonify(data)
+
+
 
 
 # Debug Info

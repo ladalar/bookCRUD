@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Dashboard</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+        }
+
+        /* Navigation Bar Styles */
+        .navbar {
+            background-color: #2c3e50;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+        }
+
+        .navbar a {
+            color: #ecf0f1;
+            padding: 14px 20px;
+            text-decoration: none;
+            display: block;
+        }
+
+        .navbar a:hover {
+            background-color: #34495e;
+        }
+
+        .navbar .brand {
+            font-size: 20px;
+            font-weight: bold;
+        }
+
+        .navbar .nav-links {
+            margin-left: auto;
+            display: flex;
+        }
+
+        /* Chart container style */
+        #chartContainer {
+            max-width: 700px;
+            margin: 40px auto;
+            padding: 20px;
+            background: #f9f9f9;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Navigation Bar -->
+    <div class="navbar">
+        <div class="brand">Dashboard</div>
+        <div class="nav-links">
+            <a href="index">Tables</a>
+            <a href="dash">Dashboard</a>
+        </div>
+    </div>
+
+    <!-- Page Content -->
+    <div id="chartContainer">
+        <h1>Subject Popularity</h1>
+        <canvas id="popularityChartSubjects"></canvas>
+    </div>
+
+    <div id="chartContainer">
+        <h1>Author Popularity</h1>
+        <canvas id="popularityChartAuthors"></canvas>
+    </div>
+
+
+    <!-- Chart.js library -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <script>
+        // Fetch the data and render the chart
+        // Subject popularity chart
+        fetch('/dash-spop')
+            .then(res => res.json())
+            .then(data => {
+                const ctx = document.getElementById('popularityChartSubjects').getContext('2d');
+                new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: data.map(d => d.subject),
+                        datasets: [{
+                            label: 'Number of Titles',
+                            data: data.map(d => d.popularity),
+                            backgroundColor: 'rgba(54, 162, 235, 0.6)',
+                            borderColor: 'rgba(54, 162, 235, 1)',
+                            borderWidth: 1,
+                            borderRadius: 4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: { precision: 0 },
+                                title: { display: true, text: 'Number of Titles' }
+                            },
+                            x: {
+                                title: { display: true, text: 'Subject' }
+                            }
+                        },
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: { enabled: true }
+                        }
+                    }
+                });
+            })
+            .catch(err => {
+                console.error('Error loading subject chart data:', err);
+                const container = document.getElementById('chartContainer');
+                container.innerHTML = '<p>Failed to load subject chart data.</p>';
+            });
+
+        // Author popularity chart
+        fetch('/dash-apop')
+            .then(res => res.json())
+            .then(data => {
+                const ctx = document.getElementById('popularityChartAuthors').getContext('2d');
+                new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: data.map(d => d.author),
+                        datasets: [{
+                            label: 'Number of Titles',
+                            data: data.map(d => d.popularity),
+                            backgroundColor: 'rgba(255, 99, 132, 0.6)',
+                            borderColor: 'rgba(255, 99, 132, 1)',
+                            borderWidth: 1,
+                            borderRadius: 4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: { precision: 0 },
+                                title: { display: true, text: 'Number of Titles' }
+                            },
+                            x: {
+                                title: { display: true, text: 'Author' }
+                            }
+                        },
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: { enabled: true }
+                        }
+                    }
+                });
+            })
+            .catch(err => {
+                console.error('Error loading author chart data:', err);
+                const container = document.getElementById('chartContainerAuthors');
+                container.innerHTML = '<p>Failed to load author chart data.</p>';
+            });
+
+    </script>
+
+</body>
+</html>
