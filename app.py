@@ -380,6 +380,44 @@ def dash_apop():
     data = [{'author': r[0], 'popularity': r[1]} for r in results]
     return jsonify(data)
 
+@app.route('/dash-ppop')
+def dash_ppop():
+    results = (
+        db.session.query(Publisher.pname, func.count(Title.titleID).label('popularity'))
+        .outerjoin(Title, Publisher.pubID == Title.pubID)
+        .group_by(Publisher.pname)
+        .order_by(func.count(Title.titleID).desc())
+        .all()
+    )
+
+    data = [{'publisher': r[0], 'popularity': r[1]} for r in results]
+    return jsonify(data)
+
+@app.route('/dash-newest-title-authors')
+def dash_newest_title_authors():
+    # Get newest title by pubDate descending
+    newest_title = Title.query.order_by(Title.pubDate.desc()).first()
+    if not newest_title:
+        return jsonify({'message': 'No titles found'}), 404
+    
+    # Get authors for that title
+    authors = (
+        db.session.query(Author.aName)
+        .join(TitleAuthor, Author.auID == TitleAuthor.auID)
+        .filter(TitleAuthor.titleID == newest_title.titleID)
+        .all()
+    )
+    
+    author_names = [a[0] for a in authors]  # extract author names
+    
+    data = {
+        'titleID': newest_title.titleID,
+        'title': newest_title.title,
+        'pubDate': newest_title.pubDate.isoformat() if newest_title.pubDate else None,
+        'authors': author_names
+    }
+    return jsonify(data)
+
 
 
 

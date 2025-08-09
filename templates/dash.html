@@ -53,15 +53,25 @@
 <body>
 
     <!-- Navigation Bar -->
-    <div class="navbar">
-        <div class="brand">Dashboard</div>
-        <div class="nav-links">
-            <a href="index">Tables</a>
-            <a href="dash">Dashboard</a>
+    <div style="display: flex; justify-content: center; margin: 20px 0;">
+        <div id="newest-title-authors-container" style="
+            padding: 15px; 
+            border: 1px solid #ddd; 
+            border-radius: 8px; 
+            background: #f9f9f9; 
+            max-width: 600px; 
+            font-family: Arial, sans-serif;
+            width: 100%;
+            box-sizing: border-box;
+        ">
+            <h3 style="margin-bottom: 8px; color: #333;">📚 Newest Title</h3>
+            <div id="newest-title-authors" style="font-size: 18px; color: #555;">Loading...</div>
+            <div id="newest-pubdate" style="font-size: 14px; color: #888; margin-top: 4px;"></div>
+            <div id="newest-authors" style="font-size: 16px; color: #444; margin-top: 8px;"></div>
         </div>
     </div>
 
-    <!-- Page Content -->
+
     <div id="chartContainer">
         <h1>Subject Popularity</h1>
         <canvas id="popularityChartSubjects"></canvas>
@@ -72,6 +82,10 @@
         <canvas id="popularityChartAuthors"></canvas>
     </div>
 
+    <div id="chartContainer">
+        <h1>Publisher Popularity</h1>
+        <canvas id="popularityChartPublishers"></canvas>
+    </div>
 
     <!-- Chart.js library -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -163,6 +177,74 @@
                 const container = document.getElementById('chartContainerAuthors');
                 container.innerHTML = '<p>Failed to load author chart data.</p>';
             });
+
+        // Publisher popularity chart
+        fetch('/dash-ppop')
+            .then(res => res.json())
+            .then(data => {
+                const ctx = document.getElementById('popularityChartPublishers').getContext('2d');
+                new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: data.map(d => d.publisher),
+                        datasets: [{
+                            label: 'Number of Titles',
+                            data: data.map(d => d.popularity),
+                            backgroundColor: 'rgba(255, 206, 86, 0.6)',
+                            borderColor: 'rgba(255, 206, 86, 1)',
+                            borderWidth: 1,
+                            borderRadius: 4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: { precision: 0 },
+                                title: { display: true, text: 'Number of Titles' }
+                            },
+                            x: {
+                                title: { display: true, text: 'Publisher' }
+                            }
+                        },
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: { enabled: true }
+                        }
+                    }
+                });
+            })
+            .catch(err => {
+                console.error('Error loading publisher chart data:', err);
+                const container = document.getElementById('chartContainer');
+                container.innerHTML = '<p>Failed to load publisher chart data.</p>';
+            });
+
+            fetch('/dash-newest-title-authors')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.title) {
+                    document.getElementById('newest-title-authors').textContent = data.title;
+
+                    if (data.pubDate) {
+                        const pubDate = new Date(data.pubDate).toLocaleDateString();
+                        document.getElementById('newest-pubdate').textContent = `Published: ${pubDate}`;
+                    }
+
+                    if (data.authors && data.authors.length > 0) {
+                        document.getElementById('newest-authors').textContent = `Author(s): ${data.authors.join(', ')}`;
+                    } else {
+                        document.getElementById('newest-authors').textContent = 'Author(s): Unknown';
+                    }
+                    } else {
+                    document.getElementById('newest-title-authors').textContent = 'No titles available';
+                    }
+                })
+                .catch(err => {
+                    document.getElementById('newest-title-authors').textContent = 'Error loading newest title and authors';
+                    console.error(err);
+                });
 
     </script>
 
