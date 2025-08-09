@@ -53,22 +53,31 @@
 <body>
 
     <!-- Navigation Bar -->
-    <div style="display: flex; justify-content: center; margin: 20px 0;">
-        <div id="newest-title-authors-container" style="
-            padding: 15px; 
-            border: 1px solid #ddd; 
-            border-radius: 8px; 
-            background: #f9f9f9; 
-            max-width: 600px; 
-            font-family: Arial, sans-serif;
-            width: 100%;
-            box-sizing: border-box;
-        ">
-            <h3 style="margin-bottom: 8px; color: #333;">📚 Newest Title</h3>
-            <div id="newest-title-authors" style="font-size: 18px; color: #555;">Loading...</div>
-            <div id="newest-pubdate" style="font-size: 14px; color: #888; margin-top: 4px;"></div>
-            <div id="newest-authors" style="font-size: 16px; color: #444; margin-top: 8px;"></div>
+    <div class="navbar">
+        <div class="brand">Dashboard</div>
+        <div class="nav-links">
+            <a href="index">Tables</a>
+            <a href="dash">Dashboard</a>
         </div>
+    </div>
+
+    <!-- Page Content -->
+    <div style="display: flex; justify-content: center; margin: 20px 0;">
+    <div id="newest-title-authors-container" style="
+        padding: 15px; 
+        border: 1px solid #ddd; 
+        border-radius: 8px; 
+        background: #f9f9f9; 
+        max-width: 600px; 
+        font-family: Arial, sans-serif;
+        width: 100%;
+        box-sizing: border-box;
+    ">
+        <h3 style="margin-bottom: 8px; color: #333;">📚 Newest Book</h3>
+        <div id="newest-title-authors" style="font-size: 18px; color: #555;">Loading...</div>
+        <div id="newest-pubdate" style="font-size: 14px; color: #888; margin-top: 4px;"></div>
+        <div id="newest-authors" style="font-size: 16px; color: #444; margin-top: 8px;"></div>
+    </div>
     </div>
 
 
